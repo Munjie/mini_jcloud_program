@@ -1,0 +1,36 @@
+<view class="container">
+  <!-- 顶部提示 -->
+  <view class="header">
+    <!-- <image class="logo" src="/assets/images/wechat-logo.png" mode="widthFix"></image> -->
+    <text class="title">JCloud</text>
+  </view>
+
+  <view class="tip">
+    您正在使用微信扫码登录
+  </view>
+
+  <view class="info">
+    <view class="avatar-box" wx:if="{{avatarUrl}}">
+      <image class="avatar" src="{{avatarUrl}}" mode="aspectFill"></image>
+    </view>
+    <view class="nickname" wx:if="{{nickName}}">
+      您好，{{nickName}}
+    </view>
+    <view class="no-nick" wx:else>
+      请授权登录
+    </view>
+  </view>
+
+  <!-- 授权按钮 -->
+  <button 
+    class="login-btn" 
+    open-type="getUserInfo" 
+    bindgetuserinfo="onGetUserInfo"
+    loading="{{loading}}">
+    {{buttonText}}
+  </button>
+
+  <view class="footer-tip">
+    授权后即可在电脑端自动登录
+  </view>
+</view>

@@ -1,0 +1,24 @@
+<navigation-bar title="Weather" color="white" background="transparent"></navigation-bar>
+
+<scroll-view scroll-y class="container">
+  <view class="search-box">
+    <input class="search-input" placeholder="输入城市..." placeholder-class="ph" bindconfirm="onSearch" />
+  </view>
+
+  <view class="weather-main">
+    <text class="city">{{city}}</text>
+    <text class="temp">{{temp}}°</text>
+    <text class="desc">{{desc}}</text>
+  </view>
+
+  <view class="detail-row">
+    <view class="detail-item">
+      <text class="label">湿度</text>
+      <text class="value">{{humidity}}%</text>
+    </view>
+    <view class="detail-item">
+      <text class="label">风速</text>
+      <text class="value">{{wind}} km/h</text>
+    </view>
+  </view>
+</scroll-view>
