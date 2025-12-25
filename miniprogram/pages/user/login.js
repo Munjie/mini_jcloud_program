@@ -85,18 +85,28 @@ Page({
           this.setData({
             buttonText: '授权成功！'
           })
-          wx.showToast({
-            title: '授权成功！网页即将登录',
-            icon: 'success',
-            duration: 3000
+          wx.showModal({
+            title: '提示',
+            content: '授权成功,网页即将登录,请点击确定关闭。',
+            showCancel: false,
+            success: res => {
+              if (res.confirm) {
+                wx.exitMiniProgram({
+                  success: () => console.log('小程序已退出'),
+                  fail: err => console.error('退出失败', err)
+                })
+              }
+            }
           })
+          
+          
 
           // 可选：3秒后自动关闭小程序（提升体验）
           setTimeout(() => {
             wx.navigateBack({ delta: 10 }) // 尝试返回多层关闭
           }, 3000)
         } else {
-          this.fail('绑定失败')
+          this.fail('授权登录失败')
         }
       },
       fail: () => this.fail('网络错误'),

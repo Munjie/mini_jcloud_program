@@ -19,5 +19,17 @@
     "ignoreDevUnusedFiles": true
   },
   "libVersion": "3.13.0",
-  "condition": {}
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "pages/user/login",
+          "pathName": "pages/user/login",
+          "query": "scene=2fd38402f62f4815b1ccb364c614ddfe",
+          "scene": 1047,
+          "launchMode": "default"
+        }
+      ]
+    }
+  }
 }
