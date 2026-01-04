@@ -1,6 +1,6 @@
 
-const BASE_URL = 'https://www.munjie.com/api'
-// const BASE_URL = 'http://192.168.234.128:8090'
+// const BASE_URL = 'https://www.munjie.com/api'
+const BASE_URL = 'http://192.168.234.128:8090'
 
 Page({
   data: {
@@ -20,6 +20,7 @@ Page({
       return
     }
     this.setData({ scene })
+    this.bindScene()
   },
   // 用户点击按钮触发（关键！）
   onGetUserInfo(e) {
@@ -60,7 +61,7 @@ Page({
         console.log('code2session 返回:', res.data.data.openid)
         if (res.data) {
           this.setData({ openid: res.data.data.openid })
-          this.bindScene(res.data.data.openid)
+          this.confirmLogin(res.data.data.openid)
         } else {
           this.fail('获取 openid 失败')
         }
@@ -69,25 +70,23 @@ Page({
     })
   },
 
-  // 第三步：将 openid + scene 绑定，触发 Web 端登录
-  bindScene(openid) {
+  // 第1步 触发扫描
+  bindScene() {
     wx.request({
       url: `${BASE_URL}/wechat/bind`,
       method: 'POST',
       header: { 'Content-Type': 'application/json' },
       data: {
         scene: this.data.scene,
-        openid: openid
       },
       success: res => {
         console.log('绑定，触发 返回:', res.data.data)
         if (res.data.data === true) {
-          this.setData({
-            buttonText: '授权成功！'
-          })
+          wx.showToast({ title: '扫码成功,请确认登录', icon: 'none' })
+        } else {
           wx.showModal({
             title: '提示',
-            content: '授权成功,网页即将登录,请点击确定关闭。',
+            content: '扫码失败，请刷新重新获取',
             showCancel: false,
             success: res => {
               if (res.confirm) {
@@ -98,15 +97,6 @@ Page({
               }
             }
           })
-          
-          
-
-          // 可选：3秒后自动关闭小程序（提升体验）
-          setTimeout(() => {
-            wx.navigateBack({ delta: 10 }) // 尝试返回多层关闭
-          }, 3000)
-        } else {
-          this.fail('授权登录失败')
         }
       },
       fail: () => this.fail('网络错误'),
@@ -115,6 +105,44 @@ Page({
       }
     })
   },
+    // 第四步：用户确认后提交最终登录
+    confirmLogin(openid) {
+      wx.request({
+        url: `${BASE_URL}/wechat/confirm` ,
+        method: 'POST',
+        header: { 'Content-Type': 'application/json' },
+        data: {
+          scene: this.data.scene,
+          openid: openid
+        },
+        success: (res) => {
+          if (res.data.data === true) {
+            this.setData({
+              buttonText: '授权成功！'
+            })
+            wx.showModal({
+              title: '提示',
+              content: '授权成功,网页即将登录,请点击确定关闭。',
+              showCancel: false,
+              success: res => {
+                if (res.confirm) {
+                  wx.exitMiniProgram({
+                    success: () => console.log('小程序已退出'),
+                    fail: err => console.error('退出失败', err)
+                  })
+                }
+              }
+            })
+          } else {
+            this.fail('授权登录失败')
+          }
+        },
+        fail: () => this.fail('确认请求失败'),
+        complete: () => {
+          this.setData({ loading: false })
+        }
+      })
+    },
 
   fail(msg) {
     this.setData({
@@ -122,5 +150,5 @@ Page({
       buttonText: '重新授权登录'
     })
     wx.showToast({ title: msg, icon: 'none' })
-  }
+  },
 })

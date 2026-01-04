@@ -25,7 +25,7 @@
         {
           "name": "pages/user/login",
           "pathName": "pages/user/login",
-          "query": "scene=2fd38402f62f4815b1ccb364c614ddfe",
+          "query": "scene=dab8ed732fd948289662b3e296eb10b5",
           "scene": 1047,
           "launchMode": "default"
         }
