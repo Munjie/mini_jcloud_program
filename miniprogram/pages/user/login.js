@@ -1,9 +1,9 @@
-const BASE_URL = 'https://www.munjie.com/api'
+// const BASE_URL = 'https://www.munjie.com/api'
 // const BASE_URL = 'http://192.168.234.128:8090'
 
 // 默认灰色头像占位图
 const DEFAULT_AVATAR = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0';
-
+import { BASE_URL } from '../../utils/config';
 Page({
   data: {
     scene: '',
