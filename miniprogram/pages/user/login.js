@@ -1,92 +1,178 @@
+const BASE_URL = 'https://www.munjie.com/api'
+// const BASE_URL = 'http://192.168.234.128:8090'
 
-// const BASE_URL = 'https://www.munjie.com/api'
-const BASE_URL = 'http://192.168.234.128:8090'
+// 默认灰色头像占位图
+const DEFAULT_AVATAR = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0';
 
 Page({
   data: {
-    scene: '',          // 从二维码带来的 scene 参数
+    scene: '',
     openid: '',
-    avatarUrl: '',
+    avatarUrl: '',     
     nickName: '',
-    loading: false,
-    buttonText: '确认登录'
+    defaultAvatar: DEFAULT_AVATAR,
+    hasUserInfo: false,
+    loading: true,
+    isExistingUser: false, // 标识是否为老用户
+    buttonText: '立即登录'
   },
 
   onLoad(options) {
-    // 获取二维码中携带的 scene 参数（必须）
     const scene = options.scene || ''
-    if (!scene) {
-      wx.showToast({ title: '参数错误', icon: 'none' })
-      return
-    }
-    this.setData({ scene })
-    this.bindScene()
-  },
-  // 用户点击按钮触发（关键！）
-  onGetUserInfo(e) {
-    // 用户拒绝授权
-    if (!e.detail.userInfo) {
-      wx.showToast({ title: '需要授权才能登录', icon: 'none' })
-      return
-    }
-
-    const userInfo = e.detail.userInfo
-    this.setData({
-      avatarUrl: userInfo.avatarUrl,
-      nickName: userInfo.nickName,
-      loading: true,
-      buttonText: '登录中...'
-    })
-
-    // 开始 wx.login 获取 code
-    wx.login({
-      success: res => {
-        if (res.code) {
-          this.getOpenid(res.code)
-        } else {
-          this.fail('登录失败')
+    this.setData({ 
+      scene, 
+      loading: true, 
+      buttonText: '识别中...' 
+    });
+    // 1. 第一步：静默获取 openid 并检查用户是否存在
+    try {
+      wx.login({
+        success: res => {
+          if (res.code) {
+             this.checkUserStatus(res.code);
+          } else {
+            this.fail('登录失败')
+          }
         }
-      }
+      })
+       
+    } catch (err) {
+      this.fail('初始化失败');
+    }finally{
+      this.setData({ loading: false });
+    if (!this.data.buttonText || this.data.buttonText === '识别中...') {
+      this.setData({ buttonText: '立即登录' });
+    }
+    }
+    if (scene) {
+      this.setData({ scene })
+      this.bindScene() // 扫码绑定
+    }
+  },
+
+  // 检查用户是否已注册
+  checkUserStatus(code) {
+    return new Promise((resolve, reject) => {
+      wx.request({
+        url: `${BASE_URL}/wechat/userInfo`, 
+        data: { code },
+        success: (res) => {
+          const user = res.data.data;
+          if (user && user.registered) {
+            this.setData({
+              openid: user.openid,
+              nickName: user.userName,
+              avatarUrl: user.avatar,
+              isExistingUser: true,
+              hasUserInfo: true,
+              loading: false,
+              buttonText: `立即登录`
+            });
+          } else {
+            // 新用户，展示设置界面
+            this.setData({ 
+              openid: user.openid, 
+              loading: false 
+            });
+          }
+          resolve();
+        },
+        fail: reject
+      });
+    });
+  },
+
+
+  // 1. 选择头像（只保存临时路径，暂不上传）
+  onChooseAvatar(e) {
+    const { avatarUrl } = e.detail
+    this.setData({ 
+      avatarUrl: avatarUrl, // 页面立即回显
+      hasUserInfo: true
     })
   },
 
-  // 第二步：调用后端接口换取 openid
-  getOpenid(code) {
+  onNicknameChange(e) {
+    this.setData({ nickName: e.detail.value })
+  },
+
+  // 2. 点击登录主入口
+  async handleLogin() {
+    this.setData({ loading: true, buttonText: '登录中...' })
+    let finalAvatarUrl = this.data.avatarUrl;
+    // 如果是新用户，且选了临时头像，先上传
+    if (!this.data.isExistingUser &&  this.data.avatarUrl) {
+      try {
+        finalAvatarUrl = await this.uploadAvatar(this.data.avatarUrl);
+      } catch (e) {
+        this.fail('头像同步失败');
+        return;
+      }
+    }
+    // 执行确认登录
+    this.confirmLogin(this.data.openid, finalAvatarUrl);
+  },
+
+  // 3. 上传文件 Promise 封装
+  uploadAvatar(filePath) {
+    return new Promise((resolve, reject) => {
+      wx.uploadFile({
+        url: `${BASE_URL}/wechat/upload`, 
+        filePath: filePath,
+        name: 'file',
+        success: (res) => {
+          try {
+            const result = JSON.parse(res.data);
+            if (result.code === 200 && result.data) {
+              console.log('头像上传成功:', result.data);
+              resolve(result.data); // 直接返回 URL 字符串
+            } else {
+              reject(result.message || '上传接口返回错误');
+            }
+          } catch (e) {
+            console.error('解析上传响应失败', e);
+            reject('解析响应失败');
+          }
+        },
+        fail: (err) => reject(err)
+      })
+    });
+  },
+
+  // 4. 获取OpenID并提交最终信息
+  getOpenidAndConfirm(code, permanentAvatarUrl) {
     wx.request({
       url: `${BASE_URL}/wechat/code2session`,
       data: { code },
-      method: 'GET',
-      dataType: 'json',
       success: res => {
-        console.log('code2session 返回:', res.data.data.openid)
-        if (res.data) {
-          this.setData({ openid: res.data.data.openid })
-          this.confirmLogin(res.data.data.openid)
+        const openid = res.data.data.openid;
+        if (openid) {
+          this.confirmLogin(openid, permanentAvatarUrl);
         } else {
-          this.fail('获取 openid 失败')
+          this.fail('身份识别失败');
         }
       },
-      fail: () => this.fail('网络错误')
+      fail: () => this.fail('网络连接失败')
     })
   },
 
-  // 第1步 触发扫描
-  bindScene() {
+  // 5. 提交所有信息给后端保存
+  confirmLogin(openid, avatarUrl) {
     wx.request({
-      url: `${BASE_URL}/wechat/bind`,
+      url: `${BASE_URL}/wechat/confirm`,
       method: 'POST',
-      header: { 'Content-Type': 'application/json' },
       data: {
         scene: this.data.scene,
+        openid: openid,
+        nickName: this.data.nickName,
+        avatarUrl: avatarUrl 
       },
-      success: res => {
-        console.log('绑定，触发 返回:', res.data.data)
+      success: (res) => {
         if (res.data.data === true) {
-          wx.showToast({ title: '扫码成功,请确认登录', icon: 'none' })
-        } else {
+          this.setData({ buttonText: '欢迎回来', loading: false })
           wx.showModal({
             title: '提示',
-            content: '扫码失败，请刷新重新获取',
+            content: '网页即将登录,请点击确定关闭。',
             showCancel: false,
             success: res => {
               if (res.confirm) {
@@ -97,58 +183,40 @@ Page({
               }
             }
           })
+        } else {
+          this.fail('登录被拒绝');
         }
       },
-      fail: () => this.fail('网络错误'),
-      complete: () => {
-        this.setData({ loading: false })
-      }
+      fail: () => this.fail('服务器未响应')
     })
   },
-    // 第四步：用户确认后提交最终登录
-    confirmLogin(openid) {
-      wx.request({
-        url: `${BASE_URL}/wechat/confirm` ,
-        method: 'POST',
-        header: { 'Content-Type': 'application/json' },
-        data: {
-          scene: this.data.scene,
-          openid: openid
-        },
-        success: (res) => {
-          if (res.data.data === true) {
-            this.setData({
-              buttonText: '授权成功！'
-            })
-            wx.showModal({
-              title: '提示',
-              content: '授权成功,网页即将登录,请点击确定关闭。',
-              showCancel: false,
-              success: res => {
-                if (res.confirm) {
-                  wx.exitMiniProgram({
-                    success: () => console.log('小程序已退出'),
-                    fail: err => console.error('退出失败', err)
-                  })
-                }
-              }
-            })
-          } else {
-            this.fail('授权登录失败')
-          }
-        },
-        fail: () => this.fail('确认请求失败'),
-        complete: () => {
-          this.setData({ loading: false })
+
+  // 绑定 Scene，提示博客端已扫码
+  bindScene() {
+    wx.request({
+      url: `${BASE_URL}/wechat/bind`,
+      method: 'POST',
+      header: { 'Content-Type': 'application/json' },
+      data: { scene: this.data.scene },
+      success: res => {
+        if (res.data.data === true) {
+          wx.showToast({ title: '扫码成功', icon: 'success' })
+        } else {
+          wx.showToast({ title: '扫码关联失败', icon: 'none' })
         }
-      })
-    },
+      },
+      fail: () => console.error('Bind scene network error')
+    })
+  },
+
+
+
 
   fail(msg) {
     this.setData({
       loading: false,
-      buttonText: '重新授权登录'
+      buttonText: '重试登录'
     })
     wx.showToast({ title: msg, icon: 'none' })
-  },
+  }
 })
