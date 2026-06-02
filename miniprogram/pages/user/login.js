@@ -54,7 +54,7 @@ Page({
   checkUserStatus(code) {
     return new Promise((resolve, reject) => {
       wx.request({
-        url: `${BASE_URL}/wechat/userInfo`, 
+        url: `${BASE_URL}/auth/get-user-info`, 
         data: { code },
         success: (res) => {
           const user = res.data.data;
@@ -117,7 +117,7 @@ Page({
   uploadAvatar(filePath) {
     return new Promise((resolve, reject) => {
       wx.uploadFile({
-        url: `${BASE_URL}/wechat/upload`, 
+        url: `${BASE_URL}/system/upload`, 
         filePath: filePath,
         name: 'file',
         success: (res) => {
@@ -142,7 +142,7 @@ Page({
   // 4. 获取OpenID并提交最终信息
   getOpenidAndConfirm(code, permanentAvatarUrl) {
     wx.request({
-      url: `${BASE_URL}/wechat/code2session`,
+      url: `${BASE_URL}/auth/get-open-id`,
       data: { code },
       success: res => {
         const openid = res.data.data.openid;
@@ -159,7 +159,7 @@ Page({
   // 5. 提交所有信息给后端保存
   confirmLogin(openid, avatarUrl) {
     wx.request({
-      url: `${BASE_URL}/wechat/confirm`,
+      url: `${BASE_URL}/auth/confirm`,
       method: 'POST',
       data: {
         scene: this.data.scene,
@@ -194,7 +194,7 @@ Page({
   // 绑定 Scene，提示博客端已扫码
   bindScene() {
     wx.request({
-      url: `${BASE_URL}/wechat/bind`,
+      url: `${BASE_URL}/auth/bind`,
       method: 'POST',
       header: { 'Content-Type': 'application/json' },
       data: { scene: this.data.scene },
