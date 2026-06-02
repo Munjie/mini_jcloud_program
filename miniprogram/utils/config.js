@@ -5,7 +5,7 @@ const env = accountInfo.miniProgram.envVersion;
 const configs = {
   // 开发版
   develop: {
-    baseUrl: 'http://192.168.234.128:8090'
+    baseUrl: 'http://127.0.0.1:8090'
   },
   // 体验版
   trial: {
